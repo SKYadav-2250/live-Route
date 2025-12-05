@@ -1,260 +1,322 @@
-import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import '../bloc/location_bloc.dart';
-import '../model/location_model.dart';
-import '../model/trip_model.dart';
-import 'history_screen.dart';
+// import 'dart:developer';
 
-class MapScreen extends StatefulWidget {
-  final TripModel? trip;
-  final LocationModel? historyLocation;
+// import 'package:flutter/material.dart';
+// import 'package:google_maps_flutter/google_maps_flutter.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:intl/intl.dart';
+// import '../bloc/location_bloc.dart';
+// import '../model/location_model.dart';
+// import '../model/trip_model.dart';
+// import 'history_screen.dart';
 
-  const MapScreen({super.key, this.trip, this.historyLocation});
+// class MapScreen extends StatefulWidget {
+//   final TripModel? trip;
+//   final LocationModel? historyLocation;
 
-  @override
-  State<MapScreen> createState() => _MapScreenState();
-}
+//   const MapScreen({super.key, this.trip, this.historyLocation});
 
-class _MapScreenState extends State<MapScreen> {
-  GoogleMapController? _controller;
-  MapType _currentMapType = MapType.normal;
-  Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
+//   @override
+//   State<MapScreen> createState() => _MapScreenState();
+// }
 
-  @override
-  void dispose() {
-    // End trip when leaving the map screen (if it was a live trip)
-    if (widget.trip == null && widget.historyLocation == null) {
-      context.read<LocationBloc>().add(EndTrip());
-    }
-    super.dispose();
-  }
+// class _MapScreenState extends State<MapScreen> {
+//   GoogleMapController? _controller;
+//   MapType _currentMapType = MapType.normal;
+//   Set<Marker> _markers = {};
+//   Set<Polyline> _polylines = {};
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.trip != null) {
-      _loadTripData();
-    } else if (widget.historyLocation != null) {
-      _addHistoryMarker();
-    }
-  }
+//   @override
+//   void dispose() {
+//     super.dispose();
+//   }
 
-  void _loadTripData() {
-    if (widget.trip == null || widget.trip!.locations.isEmpty) return;
+//   @override
+//   void initState() {
+//     super.initState();
+//     if (widget.trip != null) {
+//       _loadTripData();
+//     } else if (widget.historyLocation != null) {
+//       _addHistoryMarker();
+//     }
+//   }
 
-    List<LatLng> points = [];
-    Set<Marker> markers = {};
+//   void _loadTripData() {
+//     if (widget.trip == null || widget.trip!.locations.isEmpty) return;
 
-    for (var loc in widget.trip!.locations) {
-      points.add(LatLng(loc.latitude, loc.longitude));
+//     List<LatLng> points = [];
+//     Set<Marker> markers = {};
 
-      // Add Markers based on type
-      if (loc.type == LocationType.start) {
-        markers.add(_createMarker(loc, BitmapDescriptor.hueRed, "Start"));
-      } else if (loc.type == LocationType.end) {
-        markers.add(_createMarker(loc, BitmapDescriptor.hueGreen, "End"));
-      } else if (loc.type == LocationType.stop) {
-        markers.add(_createMarker(loc, BitmapDescriptor.hueViolet, "Stop"));
-      }
-    }
+//     for (var loc in widget.trip!.locations) {
+//       points.add(LatLng(loc.latitude, loc.longitude));
 
-    // Add Polyline
-    _polylines.add(
-      Polyline(
-        polylineId: PolylineId(widget.trip!.id),
-        points: points,
-        color: Colors.blue,
-        width: 5,
-      ),
-    );
+//       // Add Markers based on type
+//       if (loc.type == LocationType.start) {
+//         markers.add(_createMarker(loc, BitmapDescriptor.hueRed, "Start"));
+//       } else if (loc.type == LocationType.end) {
+//         markers.add(_createMarker(loc, BitmapDescriptor.hueGreen, "End"));
+//       } else if (loc.type == LocationType.stop) {
+//         markers.add(_createMarker(loc, BitmapDescriptor.hueViolet, "Stop"));
+//       }
+//     }
 
-    setState(() {
-      _markers = markers;
-    });
-  }
+//     // Add Polyline
+//     _polylines.add(
+//       Polyline(
+//         polylineId: PolylineId(widget.trip!.id),
+//         points: points,
+//         color: Colors.blue,
+//         width: 5,
+//       ),
+//     );
 
-  void _addHistoryMarker() {
-    final loc = widget.historyLocation!;
-    _markers.add(
-      Marker(
-        markerId: MarkerId('history_${loc.timestamp}'),
-        position: LatLng(loc.latitude, loc.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: InfoWindow(
-          title: 'Visited Location',
-          snippet: DateFormat('dd MMM yyyy \at hh:mm a').format(loc.timestamp),
-        ),
-      ),
-    );
-  }
+//     setState(() {
+//       _markers = markers;
+//     });
+//   }
 
-  Marker _createMarker(LocationModel loc, double hue, String title) {
-    return Marker(
-      markerId: MarkerId('${loc.latitude}_${loc.longitude}_${loc.timestamp}'),
-      position: LatLng(loc.latitude, loc.longitude),
-      icon: BitmapDescriptor.defaultMarkerWithHue(hue),
-      infoWindow: InfoWindow(
-        title: title,
-        snippet: DateFormat('dd MMM yyyy \at hh:mm a').format(loc.timestamp),
-      ),
-    );
-  }
+//   void _addHistoryMarker() {
+//     final loc = widget.historyLocation!;
+//     _markers.add(
+//       Marker(
+//         markerId: MarkerId('history_${loc.timestamp}'),
+//         position: LatLng(loc.latitude, loc.longitude),
+//         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+//         infoWindow: InfoWindow(
+//           title: 'Visited Location',
+//           snippet: DateFormat('dd MMM yyyy \at hh:mm a').format(loc.timestamp),
+//         ),
+//       ),
+//     );
+//   }
 
-  void _onMapCreated(GoogleMapController controller) {
-    _controller = controller;
-    if (widget.trip != null && widget.trip!.locations.isNotEmpty) {
-      _fitBounds();
-    }
-  }
+//   Marker _createMarker(LocationModel loc, double hue, String title) {
+//     return Marker(
+//       markerId: MarkerId('${loc.latitude}_${loc.longitude}_${loc.timestamp}'),
+//       position: LatLng(loc.latitude, loc.longitude),
+//       icon: BitmapDescriptor.defaultMarkerWithHue(hue),
+//       infoWindow: InfoWindow(
+//         title: title,
+//         snippet: DateFormat('dd MMM yyyy \at hh:mm a').format(loc.timestamp),
+//       ),
+//     );
+//   }
 
-  void _fitBounds() {
-    if (widget.trip == null || widget.trip!.locations.isEmpty) return;
+//   void _onMapCreated(GoogleMapController controller) {
+//     _controller = controller;
+//     if (widget.trip != null && widget.trip!.locations.isNotEmpty) {
+//       _fitBounds();
+//     }
+//   }
 
-    double minLat = widget.trip!.locations.first.latitude;
-    double maxLat = widget.trip!.locations.first.latitude;
-    double minLng = widget.trip!.locations.first.longitude;
-    double maxLng = widget.trip!.locations.first.longitude;
+//   void _fitBounds() {
+//     if (widget.trip == null || widget.trip!.locations.isEmpty) return;
 
-    for (var loc in widget.trip!.locations) {
-      if (loc.latitude < minLat) minLat = loc.latitude;
-      if (loc.latitude > maxLat) maxLat = loc.latitude;
-      if (loc.longitude < minLng) minLng = loc.longitude;
-      if (loc.longitude > maxLng) maxLng = loc.longitude;
-    }
+//     double minLat = widget.trip!.locations.first.latitude;
+//     double maxLat = widget.trip!.locations.first.latitude;
+//     double minLng = widget.trip!.locations.first.longitude;
+//     double maxLng = widget.trip!.locations.first.longitude;
 
-    _controller?.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
-        ),
-        50, // padding
-      ),
-    );
-  }
+//     for (var loc in widget.trip!.locations) {
+//       if (loc.latitude < minLat) minLat = loc.latitude;
+//       if (loc.latitude > maxLat) maxLat = loc.latitude;
+//       if (loc.longitude < minLng) minLng = loc.longitude;
+//       if (loc.longitude > maxLng) maxLng = loc.longitude;
+//     }
 
-  void _toggleMapType() {
-    setState(() {
-      _currentMapType = _currentMapType == MapType.normal
-          ? MapType.satellite
-          : MapType.normal;
-    });
-  }
+//     _controller?.animateCamera(
+//       CameraUpdate.newLatLngBounds(
+//         LatLngBounds(
+//           southwest: LatLng(minLat, minLng),
+//           northeast: LatLng(maxLat, maxLng),
+//         ),
+//         50, // padding
+//       ),
+//     );
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Route'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HistoryScreen()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          BlocBuilder<LocationBloc, LocationState>(
-            builder: (context, state) {
-              Set<Marker> displayMarkers = Set.from(_markers);
-              Set<Polyline> displayPolylines = Set.from(_polylines);
+//   void _toggleMapType() {
+//     setState(() {
+//       _currentMapType = _currentMapType == MapType.normal
+//           ? MapType.satellite
+//           : MapType.normal;
+//     });
+//   }
 
-              if (widget.trip == null &&
-                  widget.historyLocation == null &&
-                  state.currentLocation != null) {
-                // Live Mode
-                if (state.currentTrip != null) {
-                  List<LatLng> currentPoints = state.currentTrip!.locations
-                      .map((e) => LatLng(e.latitude, e.longitude))
-                      .toList();
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('Live Route'),
+//         actions: [
+//           IconButton(
+//             icon: const Icon(Icons.history),
+//             onPressed: () {
+//               Navigator.push(
+//                 context,
+//                 MaterialPageRoute(builder: (context) => const HistoryScreen()),
+//               );
+//             },
+//           ),
+//         ],
+//       ),
+//       body: Stack(
+//         children: [
+//           BlocConsumer<LocationBloc, LocationState>(
+//             listenWhen: (previous, current) {
+//               // Return true if we want listener to run.
+//               // We want to run if trip ended: previous != null, current == null
+//               return previous.currentTrip != null &&
+//                   current.currentTrip == null;
+//             },
+//             listener: (context, state) {
+//               if (state.currentLocation != null && _controller != null) {
+//                 _controller!.animateCamera(
+//                   CameraUpdate.newLatLng(
+//                     LatLng(
+//                       state.currentLocation!.latitude,
+//                       state.currentLocation!.longitude,
+//                     ),
+//                   ),
+//                 );
+//               }
+//             },
+//             builder: (context, state) {
+//               Set<Marker> displayMarkers = Set.from(_markers);
+//               Set<Polyline> displayPolylines = Set.from(_polylines);
 
-                  // Update polyline for live tracking
-                  // Note: Ideally we shouldn't recreate Polyline every frame if possible, but for now it's fine
-                  displayPolylines.add(
-                    Polyline(
-                      polylineId: const PolylineId('current_trip'),
-                      points: currentPoints,
-                      color: Colors.blue,
-                      width: 5,
-                    ),
-                  );
+//               if (widget.trip == null &&
+//                   widget.historyLocation == null &&
+//                   state.currentLocation != null) {
+//                 // Live Mode
+//                 if (state.currentTrip != null) {
+//                   List<LatLng> currentPoints = state.currentTrip!.locations
+//                       .map((e) => LatLng(e.latitude, e.longitude))
+//                       .toList();
 
-                  // Add Start Marker
-                  if (state.currentTrip!.locations.isNotEmpty) {
-                    final startLoc = state.currentTrip!.locations.first;
-                    displayMarkers.add(
-                      Marker(
-                        markerId: const MarkerId('start_marker'),
-                        position: LatLng(startLoc.latitude, startLoc.longitude),
-                        icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueRed,
-                        ),
-                        infoWindow: InfoWindow(
-                          title: "Start",
-                          snippet: DateFormat(
-                            'hh:mm a',
-                          ).format(startLoc.timestamp),
-                        ),
-                      ),
-                    );
-                  }
-                }
-              }
+//                   // Update polyline for live tracking
+//                   displayPolylines.add(
+//                     Polyline(
+//                       polylineId: const PolylineId('current_trip'),
+//                       points: currentPoints,
+//                       color: Colors.blue,
+//                       width: 5,
+//                     ),
+//                   );
 
-              return GoogleMap(
-                onMapCreated: _onMapCreated,
-                initialCameraPosition: CameraPosition(
-                  target:
-                      widget.trip != null && widget.trip!.locations.isNotEmpty
-                      ? LatLng(
-                          widget.trip!.locations.first.latitude,
-                          widget.trip!.locations.first.longitude,
-                        )
-                      : (widget.historyLocation != null
-                            ? LatLng(
-                                widget.historyLocation!.latitude,
-                                widget.historyLocation!.longitude,
-                              )
-                            : (state.currentLocation != null
-                                  ? LatLng(
-                                      state.currentLocation!.latitude,
-                                      state.currentLocation!.longitude,
-                                    )
-                                  : const LatLng(0, 0))),
-                  zoom: 15,
-                ),
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-                mapType: _currentMapType,
-                markers: displayMarkers,
-                polylines: displayPolylines,
-              );
-            },
-          ),
-          Positioned(
-            top: 16,
-            right: 16,
-            child: FloatingActionButton(
-              heroTag: "mapTypeBtn",
-              onPressed: _toggleMapType,
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              child: Icon(
-                Icons.layers,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//                   // Add Start Marker
+//                   if (state.currentTrip!.locations.isNotEmpty) {
+//                     final startLoc = state.currentTrip!.locations.first;
+//                     displayMarkers.add(
+//                       Marker(
+//                         markerId: const MarkerId('start_marker'),
+//                         position: LatLng(startLoc.latitude, startLoc.longitude),
+//                         icon: BitmapDescriptor.defaultMarkerWithHue(
+//                           BitmapDescriptor.hueRed,
+//                         ),
+//                         infoWindow: InfoWindow(
+//                           title: "Start",
+//                           snippet: DateFormat(
+//                             'hh:mm a',
+//                           ).format(startLoc.timestamp),
+//                         ),
+//                       ),
+//                     );
+//                   }
+//                 }
+//               }
+
+//               return GoogleMap(
+//                 onMapCreated: _onMapCreated,
+//                 initialCameraPosition: CameraPosition(
+//                   target:
+//                       widget.trip != null && widget.trip!.locations.isNotEmpty
+//                       ? LatLng(
+//                           widget.trip!.locations.first.latitude,
+//                           widget.trip!.locations.first.longitude,
+//                         )
+//                       : (widget.historyLocation != null
+//                             ? LatLng(
+//                                 widget.historyLocation!.latitude,
+//                                 widget.historyLocation!.longitude,
+//                               )
+//                             : (state.currentLocation != null
+//                                   ? LatLng(
+//                                       state.currentLocation!.latitude,
+//                                       state.currentLocation!.longitude,
+//                                     )
+//                                   : const LatLng(0, 0))),
+//                   zoom: 15,
+//                 ),
+//                 myLocationEnabled: true,
+//                 myLocationButtonEnabled: true,
+//                 mapType: _currentMapType,
+//                 markers: displayMarkers,
+//                 polylines: displayPolylines,
+//               );
+//             },
+//           ),
+//           Positioned(
+//             top: 16,
+//             right: 16,
+//             child: FloatingActionButton(
+//               heroTag: "mapTypeBtn",
+//               onPressed: _toggleMapType,
+//               backgroundColor: Theme.of(context).colorScheme.surface,
+//               child: Icon(
+//                 Icons.layers,
+//                 color: Theme.of(context).colorScheme.primary,
+//               ),
+//             ),
+//           ),
+//           // TRIP CONTROLS
+//           if (widget.trip == null && widget.historyLocation == null)
+//             Positioned(
+//               bottom: 30,
+//               left: 20,
+//               right: 20,
+//               child: BlocBuilder<LocationBloc, LocationState>(
+//                 builder: (context, state) {
+//                   bool isTripActive = state.currentTrip != null;
+//                   return InkWell(
+//                     onTap: () {
+//                       if (isTripActive) {
+
+//                         context.read<LocationBloc>().add(EndTrip());
+//                       } else {
+//                         context.read<LocationBloc>().add(StartTrip());
+//                       }
+//                     },
+//                     child: Container(
+//                       width: double.infinity,
+//                       padding: const EdgeInsets.symmetric(vertical: 16),
+//                       decoration: BoxDecoration(
+//                         color: isTripActive ? Colors.red : Colors.green,
+//                         borderRadius: BorderRadius.circular(12),
+//                         boxShadow: [
+//                           BoxShadow(
+//                             color: Colors.black.withOpacity(0.2),
+//                             blurRadius: 8,
+//                             offset: const Offset(0, 4),
+//                           ),
+//                         ],
+//                       ),
+//                       child: Center(
+//                         child: Text(
+//                           isTripActive ? "End Trip" : "Start Trip",
+//                           style: const TextStyle(
+//                             color: Colors.white,
+//                             fontSize: 18,
+//                             fontWeight: FontWeight.bold,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//         ],
+//       ),
+//     );
+//   }
+// }
