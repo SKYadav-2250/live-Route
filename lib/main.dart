@@ -107,7 +107,7 @@ class _LifecycleWatcherState extends State<LifecycleWatcher>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      context.read<LocationBloc>().endTrip();
+      context.read<LocationBloc>().add(EndTrip());
     }
   }
 

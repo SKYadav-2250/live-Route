@@ -23,4 +23,8 @@ class CheckConnectivity extends LocationEvent {}
 
 class ClearHistory extends LocationEvent {}
 
+class StartTrip extends LocationEvent {}
+
+class EndTrip extends LocationEvent {}
+
 class StopDetected extends LocationEvent {}

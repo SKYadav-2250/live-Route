@@ -24,6 +24,15 @@ class _MapScreenState extends State<MapScreen> {
   Set<Polyline> _polylines = {};
 
   @override
+  void dispose() {
+    // End trip when leaving the map screen (if it was a live trip)
+    if (widget.trip == null && widget.historyLocation == null) {
+      context.read<LocationBloc>().add(EndTrip());
+    }
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     if (widget.trip != null) {
@@ -178,6 +187,26 @@ class _MapScreenState extends State<MapScreen> {
                       width: 5,
                     ),
                   );
+
+                  // Add Start Marker
+                  if (state.currentTrip!.locations.isNotEmpty) {
+                    final startLoc = state.currentTrip!.locations.first;
+                    displayMarkers.add(
+                      Marker(
+                        markerId: const MarkerId('start_marker'),
+                        position: LatLng(startLoc.latitude, startLoc.longitude),
+                        icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueRed,
+                        ),
+                        infoWindow: InfoWindow(
+                          title: "Start",
+                          snippet: DateFormat(
+                            'hh:mm a',
+                          ).format(startLoc.timestamp),
+                        ),
+                      ),
+                    );
+                  }
                 }
               }
 

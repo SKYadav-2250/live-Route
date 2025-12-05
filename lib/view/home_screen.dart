@@ -13,28 +13,41 @@ class HomeScreen extends StatelessWidget {
     return BlocBuilder<LocationBloc, LocationState>(
       builder: (context, state) {
         return Scaffold(
+          backgroundColor: state.isDarkMode
+              ? const Color(0xFF0A0F1F)
+              : const Color(0xFFF0F4FF),
           appBar: AppBar(
-            title: const Text('Live Route'),
+            centerTitle: true,
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            title: Text(
+              'Live Route',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                letterSpacing: 1,
+                color: state.isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
             actions: [
               IconButton(
                 icon: Icon(
                   state.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                  size: 26,
                 ),
-                onPressed: () {
-                  context.read<LocationBloc>().add(ToggleTheme());
-                },
+                onPressed: () =>
+                    context.read<LocationBloc>().add(ToggleTheme()),
               ),
               IconButton(
                 icon: Icon(
                   Icons.history,
+                  size: 26,
                   color: state.isDarkMode ? Colors.white : Colors.black,
                 ),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const HistoryScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
                   );
                 },
               ),
@@ -47,113 +60,217 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, LocationState state) {
-    // 1. Check Internet Error
     if (state.errorType == LocationErrorType.internetUnavailable) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.wifi_off, size: 100, color: Colors.redAccent),
-              const SizedBox(height: 30),
-              Text(
-                'No Internet Connection',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 15),
-              Text(
-                'Internet is not working. Please check your connection.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ],
-          ),
-        ),
+      return _errorWidget(
+        context,
+        title: "No Internet",
+        icon: Icons.wifi_off,
+        message: "Please check your internet connection and try again.",
       );
     }
 
-    // 2. Check Permission Error
     if (state.errorType == LocationErrorType.permissionDenied) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset('assets/images/location_error.png', height: 200),
-              const SizedBox(height: 30),
-              Text(
-                'Permission Denied',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 15),
-              Text(
-                'Permission is denied. Geo location is not working properly. Please start the app again after some time.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ],
-          ),
-        ),
+      return _errorWidget(
+        context,
+        title: "Permission Denied",
+        customImage: 'assets/images/location_error.png',
+        message:
+            "Location permission denied. Enable permissions and restart the app.",
       );
     }
 
-    // 3. Loading State
     if (state.isLoading || state.currentLocation == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 4. Show Location Data
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
+    final loc = state.currentLocation!;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.location_on, size: 80, color: Colors.blue),
-          const SizedBox(height: 20),
-          Text(
-            'Current Location',
-            style: Theme.of(context).textTheme.headlineSmall,
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.blueAccent.withOpacity(0.15),
+            ),
+            child: const Icon(
+              Icons.location_searching_rounded,
+              size: 70,
+              color: Colors.blueAccent,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 15),
           Text(
-            'Lat: ${state.currentLocation!.latitude.toStringAsFixed(4)}',
-            style: Theme.of(context).textTheme.titleMedium,
+            "Live Location",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColorDark,
+            ),
           ),
-          Text(
-            'Lng: ${state.currentLocation!.longitude.toStringAsFixed(4)}',
-            style: Theme.of(context).textTheme.titleMedium,
+          const SizedBox(height: 25),
+
+          // Glass-like info card
+          _glassContainer(
+            child: Column(
+              children: [
+                Text(
+                  loc.address ?? "Fetching address...",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _latLngBox("Latitude", loc.latitude.toStringAsFixed(4)),
+                    _latLngBox("Longitude", loc.longitude.toStringAsFixed(4)),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  "Last Updated: ${DateFormat('hh:mm:ss a').format(loc.timestamp)}",
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            state.currentLocation!.address ?? 'Fetching address...',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Last Updated: ${DateFormat('hh:mm:ss a').format(state.currentLocation!.timestamp)}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+
           const SizedBox(height: 40),
-          ElevatedButton.icon(
-            onPressed: () {
+
+          // Gradient button implemented using decorated Container
+          GestureDetector(
+            onTap: () {
+              context.read<LocationBloc>().add(StartTrip());
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MapScreen()),
+                MaterialPageRoute(builder: (_) => const MapScreen()),
               );
             },
-            icon: const Icon(Icons.map),
-            label: const Text('View on Map'),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6D83F2), Color(0xFF3AA6F5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  "View on Map",
+                  style: TextStyle(
+                    fontSize: 18,
+                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _glassContainer({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.12),
+            Colors.white.withOpacity(0.06),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _latLngBox(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(value, style: const TextStyle(fontSize: 16)),
+        ),
+      ],
+    );
+  }
+
+  Widget _errorWidget(
+    BuildContext context, {
+    required String title,
+    String? customImage,
+    IconData? icon,
+    required String message,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null)
+              Icon(icon, size: 100, color: Colors.redAccent)
+            else if (customImage != null)
+              Image.asset(customImage, height: 180)
+            else
+              const SizedBox.shrink(),
+            const SizedBox(height: 25),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.redAccent.shade400,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
       ),
     );
   }

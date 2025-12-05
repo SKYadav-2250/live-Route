@@ -10,202 +10,245 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      extendBodyBehindAppBar: true,
+      backgroundColor: isDark
+          ? const Color(0xFF0A0F1F)
+          : const Color(0xFFF0F4FF),
       appBar: AppBar(
         title: const Text(
-          'Trip History',
+          "Trip History",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        elevation: 0,
         centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Clear History',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Clear History?'),
-                  content: const Text(
-                    'This will permanently delete all your trip history.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        context.read<LocationBloc>().add(ClearHistory());
-                        Navigator.pop(context);
-                      },
-                      child: const Text(
-                        'Clear',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+            tooltip: "Clear History",
+            onPressed: () => _confirmDelete(context),
           ),
         ],
       ),
-      body: BlocBuilder<LocationBloc, LocationState>(
-        builder: (context, state) {
-          if (state.trips.isEmpty) {
-            return _buildEmptyState(context);
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: state.trips.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final trip = state.trips[index];
-              return _buildTripCard(context, trip);
-            },
-          );
-        },
+      body: Container(
+        margin: const EdgeInsets.only(top: 80),
+        child: BlocBuilder<LocationBloc, LocationState>(
+          builder: (context, state) {
+            if (state.trips.isEmpty) {
+              return _buildEmptyState(context);
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.all(20),
+              itemCount: state.trips.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 15),
+              itemBuilder: (context, index) {
+                return _tripCard(context, state.trips[index]);
+              },
+            );
+          },
+        ),
       ),
     );
   }
 
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          "Clear History?",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+            "This action will permanently delete all your trip records."),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text(
+              "Clear",
+              style: TextStyle(color: Colors.red),
+            ),
+            onPressed: () {
+              context.read<LocationBloc>().add(ClearHistory());
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  //---------------------------------------------------------------------------
+  // EMPTY STATE
+  //---------------------------------------------------------------------------
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.history_toggle_off,
-            size: 80,
-            color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
+            Icons.map_outlined,
+            size: 90,
+            color: Colors.blueAccent.withOpacity(0.4),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
-            'No Trips Yet',
+            "No Trips Recorded",
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your completed trips will appear here.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            "Your trip history will appear here.",
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
-  Widget _buildTripCard(BuildContext context, TripModel trip) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final startLocation = trip.locations.isNotEmpty
-        ? trip.locations.first
-        : null;
-    final endLocation = trip.locations.isNotEmpty ? trip.locations.last : null;
+  //---------------------------------------------------------------------------
+  // TRIP CARD
+  //---------------------------------------------------------------------------
+  Widget _tripCard(BuildContext context, TripModel trip) {
+    final startLocation = trip.locations.firstOrNull;
+    final endLocation = trip.locations.lastOrNull;
     final duration = trip.endTime != null
         ? trip.endTime!.difference(trip.startTime)
         : Duration.zero;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: isDark ? Colors.grey[850] : Colors.white,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => MapScreen(trip: trip)),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Date and Duration
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DateFormat('dd MMM yyyy').format(trip.startTime),
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => MapScreen(trip: trip)),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.18),
+              Colors.white.withOpacity(0.08),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.15),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            //--------------------------------------------------------------------
+            // HEADER ROW
+            //--------------------------------------------------------------------
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  DateFormat("dd MMM yyyy").format(trip.startTime),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "${duration.inMinutes} min",
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 13,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.secondaryContainer.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${duration.inMinutes} min',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Start Location
-              _buildLocationRow(
-                context,
-                Icons.circle,
-                Colors.red,
-                startLocation?.address ?? 'Unknown Start',
-                DateFormat('hh:mm a').format(trip.startTime),
-              ),
-              // Connector Line
-              Padding(
-                padding: const EdgeInsets.only(left: 7),
-                child: Container(
-                  height: 16,
-                  width: 2,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            //--------------------------------------------------------------------
+            // START LOCATION
+            //--------------------------------------------------------------------
+            _locationRow(
+              icon: Icons.radio_button_checked,
+              color: Colors.redAccent,
+              address: startLocation?.address ?? "Unknown Start",
+              time: DateFormat("hh:mm a").format(trip.startTime),
+            ),
+
+            // Dotted Line
+            Padding(
+              padding: const EdgeInsets.only(left: 9),
+              child: Container(
+                height: 20,
+                width: 2,
+                decoration: BoxDecoration(
                   color: Colors.grey.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              // End Location
-              _buildLocationRow(
-                context,
-                Icons.square,
-                Colors.green,
-                endLocation?.address ?? 'Unknown End',
-                trip.endTime != null
-                    ? DateFormat('hh:mm a').format(trip.endTime!)
-                    : 'Ongoing',
-              ),
-            ],
-          ),
+            ),
+
+            //--------------------------------------------------------------------
+            // END LOCATION
+            //--------------------------------------------------------------------
+            _locationRow(
+              icon: Icons.location_on,
+              color: Colors.green,
+              address: endLocation?.address ?? "Unknown End",
+              time: trip.endTime != null
+                  ? DateFormat("hh:mm a").format(trip.endTime!)
+                  : "Ongoing",
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildLocationRow(
-    BuildContext context,
-    IconData icon,
-    Color color,
-    String address,
-    String time,
-  ) {
+  //---------------------------------------------------------------------------
+  // LOCATION ROW
+  //---------------------------------------------------------------------------
+  Widget _locationRow({
+    required IconData icon,
+    required Color color,
+    required String address,
+    required String time,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: color),
+        Icon(icon, size: 18, color: color),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -213,18 +256,18 @@ class HistoryScreen extends StatelessWidget {
             children: [
               Text(
                 address,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
                 time,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.5),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.withOpacity(0.6),
                 ),
               ),
             ],

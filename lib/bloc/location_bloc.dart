@@ -28,6 +28,8 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
     on<ToggleTheme>(_onToggleTheme);
     on<CheckConnectivity>(_onCheckConnectivity);
     on<ClearHistory>(_onClearHistory);
+    on<StartTrip>(_onStartTrip);
+    on<EndTrip>(_onEndTrip);
     on<StopDetected>(_onStopDetected);
   }
 
@@ -73,16 +75,8 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
       return;
     }
 
-    // Start Tracking
+    // Start Tracking (but NOT recording a trip yet)
     emit(state.copyWith(errorType: LocationErrorType.none, isLoading: true));
-
-    // Start a new trip
-    final newTrip = TripModel(
-      id: const Uuid().v4(),
-      startTime: DateTime.now(),
-      locations: [],
-    );
-    emit(state.copyWith(currentTrip: newTrip));
 
     try {
       final position = await _locationService.getCurrentLocation();
@@ -95,6 +89,7 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
       );
     } catch (e) {
       // Handle errors
+      emit(state.copyWith(isLoading: false));
     }
   }
 
@@ -122,7 +117,7 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
     );
 
     // Update Current Location
-    emit(state.copyWith(currentLocation: newLocation));
+    emit(state.copyWith(currentLocation: newLocation, isLoading: false));
 
     // Trip Logic
     if (state.currentTrip != null) {
@@ -169,8 +164,85 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
       );
       emit(state.copyWith(currentTrip: updatedTrip));
 
-      // Persist current trip state if needed, but we mostly care about completed trips
+      // INCREMENTAL PERSISTENCE: Save trip state on every update to prevent data loss
+      await _storageService.saveTrips([updatedTrip, ...state.trips]);
     }
+  }
+
+  Future<void> _onStartTrip(
+    StartTrip event,
+    Emitter<LocationState> emit,
+  ) async {
+    if (state.currentTrip != null) return; // Already in a trip
+
+    final newTrip = TripModel(
+      id: const Uuid().v4(),
+      startTime: DateTime.now(),
+      locations: [],
+    );
+    emit(state.copyWith(currentTrip: newTrip));
+
+    // Start periodic timer for stop detection
+    _stopTimer?.cancel();
+    _stopTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (_lastMoveTime != null &&
+          DateTime.now().difference(_lastMoveTime!).inMinutes >= 3) {
+        add(StopDetected());
+      }
+    });
+
+    // Save initial state
+    await _storageService.saveTrips([newTrip, ...state.trips]);
+  }
+
+  Future<void> _onEndTrip(EndTrip event, Emitter<LocationState> emit) async {
+    if (state.currentTrip != null) {
+      List<LocationModel> locations = List.from(state.currentTrip!.locations);
+
+      // Fetch Fresh Location for accuracy
+      try {
+        final position = await _locationService.getCurrentLocation();
+        final String? address = await _geocodingService.getAddressFromLatLng(
+          position.latitude,
+          position.longitude,
+        );
+
+        locations.add(
+          LocationModel(
+            latitude: position.latitude,
+            longitude: position.longitude,
+            address: address,
+            timestamp: DateTime.now(),
+            type: LocationType.end,
+          ),
+        );
+      } catch (e) {
+        // Fallback to last known location if fetch fails
+        if (locations.isNotEmpty) {
+          var last = locations.last;
+          locations.add(
+            last.copyWith(type: LocationType.end, timestamp: DateTime.now()),
+          );
+        }
+      }
+
+      final completedTrip = state.currentTrip!.copyWith(
+        endTime: DateTime.now(),
+        locations: locations,
+      );
+
+      // Update state with new trip at the top
+      final newTrips = List<TripModel>.from(state.trips)
+        ..insert(0, completedTrip);
+      emit(state.copyWith(trips: newTrips, currentTrip: null));
+
+      // Save finalized list
+      await _storageService.saveTrips(newTrips);
+    } else {
+      emit(state.copyWith(currentTrip: null));
+    }
+    _stopTimer?.cancel();
+    _lastMoveTime = null;
   }
 
   Future<void> _onStopDetected(
@@ -237,34 +309,6 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
     ) {
       add(CheckConnectivity());
     });
-  }
-
-  // Method to be called when app is closing (e.g. from main.dart lifecycle listener)
-  Future<void> endTrip() async {
-    if (state.currentTrip != null && state.currentTrip!.locations.isNotEmpty) {
-      var locations = List<LocationModel>.from(state.currentTrip!.locations);
-      // Mark last point as END
-      var last = locations.last;
-      locations.removeLast();
-      locations.add(
-        LocationModel(
-          latitude: last.latitude,
-          longitude: last.longitude,
-          address: last.address,
-          timestamp: DateTime.now(),
-          type: LocationType.end,
-        ),
-      );
-
-      final completedTrip = state.currentTrip!.copyWith(
-        endTime: DateTime.now(),
-        locations: locations,
-      );
-
-      final newTrips = List<TripModel>.from(state.trips)
-        ..insert(0, completedTrip);
-      await _storageService.saveTrips(newTrips);
-    }
   }
 
   @override
