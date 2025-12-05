@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:geolocator/geolocator.dart';
@@ -39,9 +40,10 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
   ) async {
     emit(state.copyWith(isLoading: true));
 
-    // Load Trips
+    // Load Trips & Visited Locations
     final trips = await _storageService.getTrips();
-    emit(state.copyWith(trips: trips));
+    final visited = await _storageService.getVisitedLocations();
+    emit(state.copyWith(trips: trips, visitedLocations: visited));
 
     // Check Connectivity first
     final connectivityResult = await Connectivity().checkConnectivity();
@@ -119,6 +121,31 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
     // Update Current Location
     emit(state.copyWith(currentLocation: newLocation, isLoading: false));
 
+    // VISITED LOCATIONS LOGIC
+    // Check if distinct from last visited location (> 100m)
+    List<LocationModel> visited = List.from(state.visitedLocations);
+    bool addToVisited = false;
+    if (visited.isEmpty) {
+      addToVisited = true;
+    } else {
+      final lastVisited = visited.last;
+      final distance = Geolocator.distanceBetween(
+        lastVisited.latitude,
+        lastVisited.longitude,
+        newLocation.latitude,
+        newLocation.longitude,
+      );
+      if (distance > 100) {
+        addToVisited = true;
+      }
+    }
+
+    if (addToVisited) {
+      visited.add(newLocation);
+      emit(state.copyWith(visitedLocations: visited));
+      await _storageService.saveVisitedLocations(visited);
+    }
+
     // Trip Logic
     if (state.currentTrip != null) {
       List<LocationModel> updatedLocations = List.from(
@@ -178,7 +205,14 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
     final newTrip = TripModel(
       id: const Uuid().v4(),
       startTime: DateTime.now(),
-      locations: [],
+      locations: state.currentLocation != null
+          ? [
+              state.currentLocation!.copyWith(
+                type: LocationType.start,
+                timestamp: DateTime.now(),
+              ),
+            ]
+          : [],
     );
     emit(state.copyWith(currentTrip: newTrip));
 
@@ -216,6 +250,7 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
             type: LocationType.end,
           ),
         );
+        // emit(state.copyWith(currentTrip: state.currentTrip!.copyWith(locations: locations)));
       } catch (e) {
         // Fallback to last known location if fetch fails
         if (locations.isNotEmpty) {
@@ -234,12 +269,12 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
       // Update state with new trip at the top
       final newTrips = List<TripModel>.from(state.trips)
         ..insert(0, completedTrip);
-      emit(state.copyWith(trips: newTrips, currentTrip: null));
+      emit(state.copyWith(trips: newTrips, clearCurrentTrip: true));
 
       // Save finalized list
       await _storageService.saveTrips(newTrips);
     } else {
-      emit(state.copyWith(currentTrip: null));
+      emit(state.copyWith(clearCurrentTrip: true));
     }
     _stopTimer?.cancel();
     _lastMoveTime = null;

@@ -34,16 +34,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      // App is closing or going to background (potentially closing)
-      // We should end the trip
-      // Note: We need a context to access the Bloc.
-      // Since this is the root widget, we might not have the BlocProvider context here yet
-      // if we wrap MaterialApp with BlocProvider inside build.
-      // However, we are wrapping MaterialApp with BlocBuilder which is inside MultiBlocProvider.
-      // But didChangeAppLifecycleState doesn't have context easily if it's called outside build.
-      // Actually, 'context' is available in State object.
-      // But the BlocProvider is created in the build method of this widget?
-      // No, let's look at the build method below.
+     
     }
   }
 
