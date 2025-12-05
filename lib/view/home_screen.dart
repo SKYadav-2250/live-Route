@@ -176,7 +176,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ------------------------- HELPER WIDGETS -------------------------
 
   Widget _buildSliverAppBar(BuildContext context, bool isDark) {
     return SliverAppBar(

@@ -146,9 +146,6 @@ class HistoryScreen extends StatelessWidget {
   }
 }
 
-// --------------------------------------------------------------------------
-//  MODERN TRIP CARD WIDGET
-// --------------------------------------------------------------------------
 class _ModernTripCard extends StatelessWidget {
   final TripModel trip;
   final bool isDark;
@@ -207,7 +204,6 @@ class _ModernTripCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                   
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
