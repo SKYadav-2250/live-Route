@@ -1,0 +1,295 @@
+import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:uuid/uuid.dart';
+import '../model/location_model.dart';
+import '../model/trip_model.dart';
+import '../services/location_service.dart';
+import '../services/geocoding_service.dart';
+import '../services/storage_service.dart';
+
+part 'location_event.dart';
+part 'location_state.dart';
+
+class LocationBloc extends Bloc<LocationEvent, LocationState> {
+  final LocationService _locationService = LocationService();
+  final GeocodingService _geocodingService = GeocodingService();
+  final StorageService _storageService = StorageService();
+  StreamSubscription<Position>? _positionStreamSubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _stopTimer;
+  DateTime? _lastMoveTime;
+
+  LocationBloc() : super(const LocationState()) {
+    on<LocationStarted>(_onStarted);
+    on<LocationUpdated>(_onLocationUpdated);
+    on<ToggleTheme>(_onToggleTheme);
+    on<CheckConnectivity>(_onCheckConnectivity);
+    on<ClearHistory>(_onClearHistory);
+    on<StopDetected>(_onStopDetected);
+  }
+
+  Future<void> _onStarted(
+    LocationStarted event,
+    Emitter<LocationState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true));
+
+    // Load Trips
+    final trips = await _storageService.getTrips();
+    emit(state.copyWith(trips: trips));
+
+    // Check Connectivity first
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      emit(
+        state.copyWith(
+          errorType: LocationErrorType.internetUnavailable,
+          isLoading: false,
+        ),
+      );
+      _monitorConnectivity();
+      return;
+    }
+
+    _monitorConnectivity();
+
+    // Check Permissions
+    LocationPermission permission = await _locationService.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await _locationService.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      emit(
+        state.copyWith(
+          errorType: LocationErrorType.permissionDenied,
+          isLoading: false,
+        ),
+      );
+      return;
+    }
+
+    // Start Tracking
+    emit(state.copyWith(errorType: LocationErrorType.none, isLoading: true));
+
+    // Start a new trip
+    final newTrip = TripModel(
+      id: const Uuid().v4(),
+      startTime: DateTime.now(),
+      locations: [],
+    );
+    emit(state.copyWith(currentTrip: newTrip));
+
+    try {
+      final position = await _locationService.getCurrentLocation();
+      add(LocationUpdated(position));
+
+      _positionStreamSubscription = _locationService.getPositionStream().listen(
+        (position) {
+          add(LocationUpdated(position));
+        },
+      );
+    } catch (e) {
+      // Handle errors
+    }
+  }
+
+  Future<void> _onLocationUpdated(
+    LocationUpdated event,
+    Emitter<LocationState> emit,
+  ) async {
+    final String? address = await _geocodingService.getAddressFromLatLng(
+      event.position.latitude,
+      event.position.longitude,
+    );
+
+    // Determine Location Type
+    LocationType type = LocationType.path;
+    if (state.currentTrip?.locations.isEmpty ?? true) {
+      type = LocationType.start;
+    }
+
+    final newLocation = LocationModel(
+      latitude: event.position.latitude,
+      longitude: event.position.longitude,
+      address: address,
+      timestamp: DateTime.now(),
+      type: type,
+    );
+
+    // Update Current Location
+    emit(state.copyWith(currentLocation: newLocation));
+
+    // Trip Logic
+    if (state.currentTrip != null) {
+      List<LocationModel> updatedLocations = List.from(
+        state.currentTrip!.locations,
+      );
+
+      // Distance Filter (10 meters)
+      bool shouldAdd = false;
+      if (updatedLocations.isEmpty) {
+        shouldAdd = true;
+      } else {
+        final lastLoc = updatedLocations.last;
+        final distance = Geolocator.distanceBetween(
+          lastLoc.latitude,
+          lastLoc.longitude,
+          newLocation.latitude,
+          newLocation.longitude,
+        );
+        if (distance >= 10) {
+          shouldAdd = true;
+        }
+      }
+
+      if (shouldAdd) {
+        updatedLocations.add(newLocation);
+        _lastMoveTime = DateTime.now();
+
+        // Reset Stop Timer
+        _stopTimer?.cancel();
+        _stopTimer = Timer(const Duration(minutes: 3), () {
+          add(StopDetected());
+        });
+      } else {
+        // If we haven't moved > 10m, check if it's been > 3 mins since last move
+        if (_lastMoveTime != null &&
+            DateTime.now().difference(_lastMoveTime!).inMinutes >= 3) {
+          add(StopDetected());
+        }
+      }
+
+      final updatedTrip = state.currentTrip!.copyWith(
+        locations: updatedLocations,
+      );
+      emit(state.copyWith(currentTrip: updatedTrip));
+
+      // Persist current trip state if needed, but we mostly care about completed trips
+    }
+  }
+
+  Future<void> _onStopDetected(
+    StopDetected event,
+    Emitter<LocationState> emit,
+  ) async {
+    if (state.currentTrip != null && state.currentTrip!.locations.isNotEmpty) {
+      final lastLocation = state.currentTrip!.locations.last;
+
+      // Avoid adding duplicate stops
+      if (lastLocation.type != LocationType.stop) {
+        final stopLocation = lastLocation.copyWith(
+          type: LocationType.stop,
+          timestamp: DateTime.now(),
+        );
+
+        List<LocationModel> updatedLocations = List.from(
+          state.currentTrip!.locations,
+        );
+        updatedLocations.add(stopLocation);
+
+        final updatedTrip = state.currentTrip!.copyWith(
+          locations: updatedLocations,
+        );
+        emit(state.copyWith(currentTrip: updatedTrip));
+
+        // Reset timer
+        _stopTimer?.cancel();
+        _lastMoveTime = DateTime.now();
+      }
+    }
+  }
+
+  void _onToggleTheme(ToggleTheme event, Emitter<LocationState> emit) {
+    emit(state.copyWith(isDarkMode: !state.isDarkMode));
+  }
+
+  Future<void> _onCheckConnectivity(
+    CheckConnectivity event,
+    Emitter<LocationState> emit,
+  ) async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      emit(state.copyWith(errorType: LocationErrorType.internetUnavailable));
+    } else {
+      if (state.errorType == LocationErrorType.internetUnavailable) {
+        add(LocationStarted());
+      }
+    }
+  }
+
+  Future<void> _onClearHistory(
+    ClearHistory event,
+    Emitter<LocationState> emit,
+  ) async {
+    await _storageService.clearHistory();
+    emit(state.copyWith(trips: []));
+  }
+
+  void _monitorConnectivity() {
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      result,
+    ) {
+      add(CheckConnectivity());
+    });
+  }
+
+  // Method to be called when app is closing (e.g. from main.dart lifecycle listener)
+  Future<void> endTrip() async {
+    if (state.currentTrip != null && state.currentTrip!.locations.isNotEmpty) {
+      var locations = List<LocationModel>.from(state.currentTrip!.locations);
+      // Mark last point as END
+      var last = locations.last;
+      locations.removeLast();
+      locations.add(
+        LocationModel(
+          latitude: last.latitude,
+          longitude: last.longitude,
+          address: last.address,
+          timestamp: DateTime.now(),
+          type: LocationType.end,
+        ),
+      );
+
+      final completedTrip = state.currentTrip!.copyWith(
+        endTime: DateTime.now(),
+        locations: locations,
+      );
+
+      final newTrips = List<TripModel>.from(state.trips)
+        ..insert(0, completedTrip);
+      await _storageService.saveTrips(newTrips);
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _positionStreamSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    _stopTimer?.cancel();
+    return super.close();
+  }
+}
+
+extension LocationModelCopy on LocationModel {
+  LocationModel copyWith({
+    double? latitude,
+    double? longitude,
+    String? address,
+    DateTime? timestamp,
+    LocationType? type,
+  }) {
+    return LocationModel(
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      address: address ?? this.address,
+      timestamp: timestamp ?? this.timestamp,
+      type: type ?? this.type,
+    );
+  }
+}
