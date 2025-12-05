@@ -80,7 +80,7 @@ class _MapScreenState extends State<MapScreen> {
       Marker(
         markerId: MarkerId('history_${loc.timestamp}'),
         position: LatLng(loc.latitude, loc.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         infoWindow: InfoWindow(
           title: 'Visited Location',
           snippet: DateFormat('dd MMM yyyy \at hh:mm a').format(loc.timestamp),
@@ -256,7 +256,7 @@ class _MapScreenState extends State<MapScreen> {
             },
           ),
           Positioned(
-            top: 16,
+            bottom: 120,
             right: 16,
             child: FloatingActionButton(
               heroTag: "mapTypeBtn",
@@ -280,7 +280,6 @@ class _MapScreenState extends State<MapScreen> {
                   return InkWell(
                     onTap: () {
                       if (isTripActive) {
-
                         context.read<LocationBloc>().add(EndTrip());
                       } else {
                         context.read<LocationBloc>().add(StartTrip());

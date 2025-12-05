@@ -1,365 +1,36 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:intl/intl.dart';
-// import '../bloc/location_bloc.dart';
-// import 'history_screen.dart';
-// import 'map_screen.dart';
-
-// class HomeScreen extends StatelessWidget {
-//   const HomeScreen({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocBuilder<LocationBloc, LocationState>(
-//       builder: (context, state) {
-//         return Scaffold(
-//           backgroundColor: state.isDarkMode
-//               ? const Color(0xFF0A0F1F)
-//               : const Color(0xFFF0F4FF),
-//           appBar: AppBar(
-//             centerTitle: true,
-//             elevation: 0,
-//             backgroundColor: Colors.transparent,
-//             title: Text(
-//               'Live Route',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 22,
-//                 letterSpacing: 1,
-//                 color: state.isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             actions: [
-//               IconButton(
-//                 icon: Icon(
-//                   state.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-//                   size: 26,
-//                 ),
-//                 onPressed: () =>
-//                     context.read<LocationBloc>().add(ToggleTheme()),
-//               ),
-//               IconButton(
-//                 icon: Icon(
-//                   Icons.history,
-//                   size: 26,
-//                   color: state.isDarkMode ? Colors.white : Colors.black,
-//                 ),
-//                 onPressed: () {
-//                   Navigator.push(
-//                     context,
-//                     MaterialPageRoute(builder: (_) => const HistoryScreen()),
-//                   );
-//                 },
-//               ),
-//             ],
-//           ),
-//           body: _buildBody(context, state),
-//         );
-//       },
-//     );
-//   }
-
-//   Widget _buildBody(BuildContext context, LocationState state) {
-//     if (state.errorType == LocationErrorType.internetUnavailable) {
-//       return _errorWidget(
-//         context,
-//         title: "No Internet",
-//         icon: Icons.wifi_off,
-//         message: "Please check your internet connection and try again.",
-//       );
-//     }
-
-//     if (state.errorType == LocationErrorType.permissionDenied) {
-//       return _errorWidget(
-//         context,
-//         title: "Permission Denied",
-//         customImage: 'assets/images/location_error.png',
-//         message:
-//             "Location permission denied. Enable permissions and restart the app.",
-//       );
-//     }
-
-//     if (state.isLoading || state.currentLocation == null) {
-//       return const Center(child: CircularProgressIndicator());
-//     }
-
-//     final loc = state.currentLocation!;
-
-//     return SingleChildScrollView(
-//       padding: const EdgeInsets.all(20),
-//       child: Column(
-//         children: [
-//           Container(
-//             padding: const EdgeInsets.all(18),
-//             decoration: BoxDecoration(
-//               shape: BoxShape.circle,
-//               color: Colors.blueAccent.withOpacity(0.15),
-//             ),
-//             child: const Icon(
-//               Icons.location_searching_rounded,
-//               size: 70,
-//               color: Colors.blueAccent,
-//             ),
-//           ),
-//           const SizedBox(height: 15),
-//           Text(
-//             "Live  Location",
-//             style: TextStyle(
-//               fontSize: 24,
-//               fontWeight: FontWeight.bold,
-//               color: Theme.of(context).primaryColorDark,
-//             ),
-//           ),
-//           const SizedBox(height: 25),
-
-//           // Glass-like info card
-//           _glassContainer(
-//             child: Column(
-//               children: [
-//                 Text(
-//                   loc.address ?? "Fetching address...",
-//                   textAlign: TextAlign.center,
-//                   style: const TextStyle(
-//                     fontSize: 18,
-//                     fontWeight: FontWeight.w600,
-//                   ),
-//                 ),
-//                 const SizedBox(height: 18),
-//                 Row(
-//                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                   children: [
-//                     _latLngBox("Latitude", loc.latitude.toStringAsFixed(4)),
-//                     _latLngBox("Longitude", loc.longitude.toStringAsFixed(4)),
-//                   ],
-//                 ),
-//                 const SizedBox(height: 18),
-//                 Text(
-//                   "Last Updated: ${DateFormat('hh:mm:ss a').format(loc.timestamp)}",
-//                   style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           const SizedBox(height: 40),
-
-//           // Gradient button implemented using decorated Container
-//           GestureDetector(
-//             onTap: () {
-//               Navigator.push(
-//                 context,
-//                 MaterialPageRoute(builder: (_) => const MapScreen()),
-//               );
-//             },
-//             child: Container(
-//               width: double.infinity,
-//               padding: const EdgeInsets.symmetric(vertical: 16),
-//               decoration: BoxDecoration(
-//                 gradient: const LinearGradient(
-//                   colors: [Color(0xFF6D83F2), Color(0xFF3AA6F5)],
-//                   begin: Alignment.topLeft,
-//                   end: Alignment.bottomRight,
-//                 ),
-//                 borderRadius: BorderRadius.circular(14),
-//                 boxShadow: [
-//                   BoxShadow(
-//                     color: Colors.black.withOpacity(0.12),
-//                     blurRadius: 12,
-//                     offset: const Offset(0, 6),
-//                   ),
-//                 ],
-//               ),
-//               child: const Center(
-//                 child: Text(
-//                   "View on Map",
-//                   style: TextStyle(
-//                     fontSize: 18,
-//                     letterSpacing: 0.5,
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           const SizedBox(height: 30),
-//           // VISITED LOCATIONS SECTION
-//           if (state.visitedLocations.isNotEmpty) ...[
-//             Align(
-//               alignment: Alignment.centerLeft,
-//               child: Text(
-//                 "Visited Locations",
-//                 style: TextStyle(
-//                   fontSize: 18,
-//                   fontWeight: FontWeight.bold,
-//                   color: Theme.of(context).textTheme.bodyLarge?.color,
-//                 ),
-//               ),
-//             ),
-//             const SizedBox(height: 10),
-//             SizedBox(
-//               height: 120,
-//               child: ListView.builder(
-//                 scrollDirection: Axis.horizontal,
-//                 itemCount: state.visitedLocations.length,
-//                 itemBuilder: (context, index) {
-//                   // Show reverse order (newest first)
-//                   final loc =
-//                       state.visitedLocations[state.visitedLocations.length -
-//                           1 -
-//                           index];
-//                   return Container(
-//                     width: 200,
-//                     margin: const EdgeInsets.only(right: 12),
-//                     padding: const EdgeInsets.all(12),
-//                     decoration: BoxDecoration(
-//                       color: Theme.of(context).cardColor.withOpacity(0.5),
-//                       borderRadius: BorderRadius.circular(12),
-//                       border: Border.all(color: Colors.grey.withOpacity(0.2)),
-//                     ),
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       mainAxisAlignment: MainAxisAlignment.center,
-//                       children: [
-//                         Row(
-//                           children: [
-//                             Icon(
-//                               Icons.location_on,
-//                               size: 16,
-//                               color: Theme.of(context).primaryColor,
-//                             ),
-//                             const SizedBox(width: 4),
-//                             Expanded(
-//                               child: Text(
-//                                 DateFormat(
-//                                   'MMM dd, hh:mm a',
-//                                 ).format(loc.timestamp),
-//                                 style: TextStyle(
-//                                   fontSize: 12,
-//                                   fontWeight: FontWeight.bold,
-//                                   color: Theme.of(context).primaryColor,
-//                                 ),
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                         const SizedBox(height: 8),
-//                         Text(
-//                           loc.address ??
-//                               "${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}",
-//                           maxLines: 3,
-//                           overflow: TextOverflow.ellipsis,
-//                           style: const TextStyle(fontSize: 12, height: 1.3),
-//                         ),
-//                       ],
-//                     ),
-//                   );
-//                 },
-//               ),
-//             ),
-//             const SizedBox(height: 20),
-//           ],
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _glassContainer({required Widget child}) {
-//     return Container(
-//       width: double.infinity,
-//       padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 18),
-//       decoration: BoxDecoration(
-//         borderRadius: BorderRadius.circular(20),
-//         gradient: LinearGradient(
-//           colors: [
-//             Colors.white.withOpacity(0.12),
-//             Colors.white.withOpacity(0.06),
-//           ],
-//           begin: Alignment.topLeft,
-//           end: Alignment.bottomRight,
-//         ),
-//         border: Border.all(color: Colors.white.withOpacity(0.18)),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(0.12),
-//             blurRadius: 16,
-//             offset: const Offset(0, 6),
-//           ),
-//         ],
-//       ),
-//       child: child,
-//     );
-//   }
-
-//   Widget _latLngBox(String label, String value) {
-//     return Column(
-//       children: [
-//         Text(
-//           label,
-//           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-//         ),
-//         const SizedBox(height: 6),
-//         Container(
-//           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
-//           decoration: BoxDecoration(
-//             color: Colors.blueAccent.withOpacity(0.12),
-//             borderRadius: BorderRadius.circular(14),
-//           ),
-//           child: Text(value, style: const TextStyle(fontSize: 16)),
-//         ),
-//       ],
-//     );
-//   }
-
-//   Widget _errorWidget(
-//     BuildContext context, {
-//     required String title,
-//     String? customImage,
-//     IconData? icon,
-//     required String message,
-//   }) {
-//     return Center(
-//       child: Padding(
-//         padding: const EdgeInsets.all(30.0),
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             if (icon != null)
-//               Icon(icon, size: 100, color: Colors.redAccent)
-//             else if (customImage != null)
-//               Image.asset(customImage, height: 180)
-//             else
-//               const SizedBox.shrink(),
-//             const SizedBox(height: 25),
-//             Text(
-//               title,
-//               style: TextStyle(
-//                 fontSize: 24,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.redAccent.shade400,
-//               ),
-//             ),
-//             const SizedBox(height: 12),
-//             Text(
-//               message,
-//               textAlign: TextAlign.center,
-//               style: const TextStyle(fontSize: 16),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+
 import '../bloc/location_bloc.dart';
 import 'history_screen.dart';
 import 'map_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -367,417 +38,489 @@ class HomeScreen extends StatelessWidget {
       builder: (context, state) {
         final isDark = state.isDarkMode;
 
-        return Scaffold(
-          backgroundColor: isDark
-              ? const Color(0xFF0A0F1F)
-              : const Color(0xFFF3F6FF),
+        // Background Gradient
+        final bgGradient = isDark
+            ? const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFF3F6FF), Color(0xFFE2E8F0)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              );
 
-          // ------------------ APP BAR ------------------
-          appBar: AppBar(
-            elevation: 0,
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            title: Text(
-              "Live Route",
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                letterSpacing: .8,
+        return Scaffold(
+          body: Container(
+            decoration: BoxDecoration(gradient: bgGradient),
+            child: SafeArea(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // 1. App Bar
+                  _buildSliverAppBar(context, isDark),
+
+                  // 2. Body Content Logic
+                  if (state.isLoading)
+                    const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (state.errorType ==
+                      LocationErrorType.internetUnavailable)
+                    SliverFillRemaining(
+                      child: _buildError(
+                        Icons.wifi_off_rounded,
+                        "No Internet",
+                        "Check your connection.",
+                      ),
+                    )
+                  else if (state.errorType ==
+                      LocationErrorType.permissionDenied)
+                    SliverFillRemaining(
+                      child: _buildError(
+                        Icons.location_disabled,
+                        "Permission Denied",
+                        "Please enable location services.",
+                      ),
+                    )
+                  else if (state.currentLocation != null) ...[
+                    // 3. Live Location Card Area
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        child: Column(
+                          children: [
+                            // Pass dynamic to avoid type errors
+                            _buildLiveLocationCard(
+                              state.currentLocation,
+                              isDark,
+                            ),
+                            const SizedBox(height: 25),
+                            _buildMapButton(context),
+                            const SizedBox(height: 35),
+
+                            // "Recent History" Header
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.timeline,
+                                  color: isDark
+                                      ? Colors.blue[300]
+                                      : Colors.blue[700],
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Recent History",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 15),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // 4. Vertical Timeline List
+                    if (state.visitedLocations.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40.0),
+                          child: Center(
+                            child: Text(
+                              "No locations visited yet.",
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          // Show newest first
+                          final actualIndex =
+                              state.visitedLocations.length - 1 - index;
+                          final loc = state.visitedLocations[actualIndex];
+
+                          final isFirst = index == 0;
+                          final isLast =
+                              index == state.visitedLocations.length - 1;
+
+                          return _buildTimelineItem(
+                            loc,
+                            isDark,
+                            isFirst,
+                            isLast,
+                          );
+                        }, childCount: state.visitedLocations.length),
+                      ),
+
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 30)),
+                  ],
+                ],
               ),
             ),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  isDark ? Icons.light_mode : Icons.dark_mode,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                onPressed: () =>
-                    context.read<LocationBloc>().add(ToggleTheme()),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.history,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
-                  );
-                },
-              ),
-            ],
           ),
-
-          // ------------------ BODY ------------------
-          body: _buildBody(context, state),
         );
       },
     );
   }
 
-  Widget _buildBody(BuildContext context, LocationState state) {
-    final isDark = state.isDarkMode;
+  // ------------------------- HELPER WIDGETS -------------------------
 
-    // INTERNET ERROR
-    if (state.errorType == LocationErrorType.internetUnavailable) {
-      return _errorWidget(
-        context,
-        title: "No Internet",
-        icon: Icons.wifi_off_rounded,
-        message:
-            "Your device is offline. Please turn on internet and try again.",
-      );
-    }
-
-    // PERMISSION ERROR
-    if (state.errorType == LocationErrorType.permissionDenied) {
-      return _errorWidget(
-        context,
-        customImage: 'assets/images/location_error.png',
-        title: "Permission Denied",
-        message: "Enable GPS/location permissions and restart the app.",
-      );
-    }
-
-    // LOADING
-    if (state.isLoading || state.currentLocation == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final loc = state.currentLocation!;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // ------------------ LOCATION ICON ------------------
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.blue.shade300.withOpacity(.2),
-            ),
-            child: const Icon(
-              Icons.my_location_rounded,
-              size: 70,
-              color: Colors.blueAccent,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Text(
-            "Live Location",
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-
-          const SizedBox(height: 25),
-
-          // ------------------ GLASS CARD ------------------
-          _glassContainer(
-            isDark: isDark,
-            child: Column(
-              children: [
-                Text(
-                  loc.address ?? "Fetching Address...",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _latLngBox(
-                      isDark: isDark,
-                      label: "Latitude",
-                      value: loc.latitude.toStringAsFixed(4),
-                    ),
-                    _latLngBox(
-                      isDark: isDark,
-                      label: "Longitude",
-                      value: loc.longitude.toStringAsFixed(4),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                Text(
-                  "Updated at: ${DateFormat('hh:mm:ss a').format(loc.timestamp)}",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.grey[300] : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 40),
-
-          // ------------------ MAP BUTTON ------------------
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MapScreen()),
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5E77FF), Color(0xFF1BCDFB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blueAccent.withOpacity(.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  "View on Map",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    letterSpacing: 0.6,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 35),
-
-          // ------------------ VISITED LOCATIONS ------------------
-          if (state.visitedLocations.isNotEmpty) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Visited Locations",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            // HORIZONTAL SCROLL CARDS
-            SizedBox(
-              height: 140,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: state.visitedLocations.length,
-                itemBuilder: (context, index) {
-                  final visited = state.visitedLocations.reversed
-                      .toList()[index];
-
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.only(right: 14),
-                    padding: const EdgeInsets.all(14),
-                    width: 220,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [
-                                Colors.white.withOpacity(.05),
-                                Colors.white.withOpacity(.03),
-                              ]
-                            : [
-                                Colors.white.withOpacity(.7),
-                                Colors.white.withOpacity(.5),
-                              ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withOpacity(.1)
-                            : Colors.black.withOpacity(.05),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              size: 18,
-                              color: isDark
-                                  ? Colors.lightBlueAccent
-                                  : Colors.blueAccent,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                DateFormat(
-                                  'MMM dd, hh:mm a',
-                                ).format(visited.timestamp),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark
-                                      ? Colors.lightBlueAccent
-                                      : Colors.blueAccent,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          visited.address ??
-                              "${visited.latitude.toStringAsFixed(4)}, ${visited.longitude.toStringAsFixed(4)}",
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 3,
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.3,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ],
+  Widget _buildSliverAppBar(BuildContext context, bool isDark) {
+    return SliverAppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      floating: true,
+      centerTitle: true,
+      title: Text(
+        "Live Route",
+        style: TextStyle(
+          color: isDark ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1,
+        ),
       ),
-    );
-  }
-
-  // ------------------ GLASS CARD ------------------
-  Widget _glassContainer({required bool isDark, required Widget child}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          colors: isDark
-              ? [Colors.white.withOpacity(.08), Colors.white.withOpacity(.04)]
-              : [Colors.white.withOpacity(.6), Colors.white.withOpacity(.35)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(.1)
-              : Colors.black.withOpacity(.05),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+      actions: [
+        IconButton(
+          icon: Icon(
+            isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
           ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  // ------------------ COORDINATE BOX ------------------
-  Widget _latLngBox({
-    required bool isDark,
-    required String label,
-    required String value,
-  }) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white70 : Colors.black,
-          ),
+          color: isDark ? Colors.amber : Colors.grey[800],
+          // Ensure ToggleTheme is imported from your bloc file
+          onPressed: () => context.read<LocationBloc>().add(ToggleTheme()),
         ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            color: isDark
-                ? Colors.blueAccent.withOpacity(.15)
-                : Colors.blueAccent.withOpacity(.1),
-          ),
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
+        IconButton(
+          icon: const Icon(Icons.history_rounded),
+          color: isDark ? Colors.white : Colors.black87,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HistoryScreen()),
           ),
         ),
       ],
     );
   }
 
-  // ------------------ ERROR WIDGET ------------------
-  Widget _errorWidget(
-    BuildContext context, {
-    required String title,
-    String? customImage,
-    IconData? icon,
-    required String message,
-  }) {
+  // Using 'dynamic' for loc to avoid import errors if LocationData isn't visible
+  Widget _buildLiveLocationCard(dynamic loc, bool isDark) {
+    return Stack(
+      alignment: Alignment.topCenter,
+      children: [
+        // The Glass Card
+        Container(
+          margin: const EdgeInsets.only(top: 40),
+          padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: isDark
+                ? const Color(0xFF1E293B).withOpacity(0.9)
+                : Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black26 : Colors.blue.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.white,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                loc.address ?? "Fetching Address...",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black12 : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildCoordItem(
+                      "LAT",
+                      loc.latitude.toStringAsFixed(4),
+                      isDark,
+                    ),
+                    Container(height: 30, width: 1, color: Colors.grey[300]),
+                    _buildCoordItem(
+                      "LNG",
+                      loc.longitude.toStringAsFixed(4),
+                      isDark,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 15),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 14,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    "Updated: ${DateFormat('hh:mm:ss a').format(loc.timestamp)}",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // The Floating Pulsing Icon
+        Positioned(
+          top: 0,
+          child: AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              return Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.blueAccent,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blueAccent.withOpacity(0.5),
+                      blurRadius: 10 + (_pulseController.value * 15),
+                      spreadRadius: _pulseController.value * 5,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.navigation_rounded,
+                  color: Colors.white,
+                  size: 35,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoordItem(String label, String value, bool isDark) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.grey[400] : Colors.grey[500],
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.blue[200] : Colors.blue[800],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MapScreen()),
+      ),
+      child: Container(
+        width: double.infinity,
+        height: 55,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4F46E5), Color(0xFF3B82F6)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4F46E5).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.map_outlined, color: Colors.white),
+            SizedBox(width: 10),
+            Text(
+              "View on Map",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(
+    dynamic loc,
+    bool isDark,
+    bool isFirst,
+    bool isLast,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline Line & Dot
+          Column(
+            children: [
+              Container(
+                width: 2,
+                height: 20,
+                color: isFirst
+                    ? Colors.transparent
+                    : Colors.grey.withOpacity(0.3),
+              ),
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.blueAccent, width: 2),
+                  color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                ),
+              ),
+              Container(
+                width: 2,
+                height: 60, // Minimum height of connection line
+                color: isLast
+                    ? Colors.transparent
+                    : Colors.grey.withOpacity(0.3),
+              ),
+            ],
+          ),
+          const SizedBox(width: 15),
+
+          // Content Card
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MapScreen(historyLocation: loc),
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 15),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.white10 : Colors.black12,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: isDark ? Colors.blue[300] : Colors.blue[700],
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          DateFormat('hh:mm a').format(loc.timestamp),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.blue[100] : Colors.blue[900],
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          DateFormat('MMM dd').format(loc.timestamp),
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[500] : Colors.grey[400],
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      loc.address ??
+                          "${loc.latitude.toStringAsFixed(4)}, ${loc.longitude.toStringAsFixed(4)}",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 13,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(IconData icon, String title, String msg) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) Icon(icon, size: 100, color: Colors.redAccent),
-          if (customImage != null) Image.asset(customImage, height: 160),
-          const SizedBox(height: 20),
+          Icon(icon, size: 60, color: Colors.red[300]),
+          const SizedBox(height: 15),
           Text(
             title,
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 10),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.4,
-              color: Colors.grey,
-            ),
-          ),
+          const SizedBox(height: 5),
+          Text(msg, style: const TextStyle(color: Colors.grey)),
         ],
       ),
     );
