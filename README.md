@@ -1,16 +1,60 @@
-# live_route
+# Live Route – Real-Time Location Tracking App
 
-A new Flutter project.
+Live Route is a Flutter application that tracks user movement in real time, detects trips automatically, and visualizes routes on Google Maps. It also stores visited locations permanently and displays them in a simple, modern UI.
 
-## Getting Started
+## ⭐ Features
 
-This project is a starting point for a Flutter application.
+- **Live GPS Tracking** – continuously tracks and updates location
+- **Trip Detection** – automatically detects Start, End, Stops
+- **GPS Noise Filtering** – ignores small movements (<10 meters)
+- **Route Visualization**
+  - Blue polyline for movement path
+  - Green start marker
+  - Red end marker
+- **Visited Locations** – stores and shows unique locations permanently
+- **History Page** – view past trips with timestamps
 
-A few resources to get you started if this is your first Flutter project:
+## 🧩 APIs & Packages Used (Simple Explanation)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 1. Google Maps Flutter
+Used to display:
+- The map
+- Markers (start, stop, end)
+- Polylines for route paths
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This provides the full visual experience of the app.
+
+### 2. Geolocator
+Used to get:
+- Live location
+- Latitude & longitude
+- Movement updates
+
+### 3. Geocoding
+- Converts coordinates → human-readable addresses.
+- Used for history cards like: "Model Town, Ludhiana"
+
+### 4. Flutter BLoC (State Management)
+The core logic is handled using BLoC, which helps:
+- Process continuous location updates
+- Detect trips
+- Filter GPS noise
+- Update UI without lag
+
+### 5. Shared Preferences
+Used to store visited locations and trips permanently so data remains even after closing the app.
+
+## 👨‍💻 How My Experience Helped
+
+My experience with Flutter and BLoC allowed me to:
+- Handle continuous GPS updates efficiently
+- Separate UI and logic → better performance
+- Implement trip detection logic cleanly
+- Build a smooth, modern interface without UI lag
+- Manage map updates and state changes correctly
+
+Using BLoC ensured that even with heavy background processing (GPS, stops, trip logic), the UI stays fast and stable.
+
+## 🛠 Built With
+
+Flutter • Dart • BLoC • Google Maps API
